@@ -1,0 +1,24 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "document-table-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/documentTable/DocumentTableWebPart.js",
+          "manifest": "./src/webparts/documentTable/DocumentTableWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {
+    "jquery": {
+      "path": "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.js",
+      "globalName": "jQuery"
+    }
+  },
+  "localizedResources": {
+    "DocumentTableWebPartStrings": "lib/webparts/documentTable/loc/{locale}.js",
+    "ControlStrings": "node_modules/@pnp/spfx-controls-react/lib/loc/{locale}.js"
+  }
+}

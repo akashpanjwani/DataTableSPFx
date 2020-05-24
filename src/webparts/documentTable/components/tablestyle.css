@@ -1,0 +1,74 @@
+ #mytblpdf table {    
+    table-layout: fixed;
+    width: 500px;   
+}
+#mytblpdf td {    
+    border: 1px solid #dddddd;
+    overflow: hidden;
+    width: 100px;
+    word-break: break-word;
+     
+}
+
+		.page-break {
+			page-break-after: always;
+			page-break-inside: avoid;
+			clear:both;
+		}
+		.page-break-before {
+			page-break-before: always;
+			page-break-inside: avoid;
+			clear:both;
+        }
+        
+
+#mytblpdf th {    
+    border: 1px solid #dddddd;
+    overflow: hidden;
+    width: 100px;
+    word-break: break-word;
+     
+}
+#mytblpdf th {    
+    border: 1px solid #dddddd;    
+    text-align: left;    
+    padding: 8px;    
+    background: #03787c;
+    color: white; 
+} 
+
+#mytblpdf tr:nth-child(even) {    
+    background-color: #dddddd;    
+}
+
+.container-name div {
+    display: inline-block;
+	width: 550px;	
+  }
+
+#block_container
+{
+    text-align:left;
+}
+#bloc1, #bloc2
+{
+    display:inline;
+}
+#bloc2
+{
+  float:right;
+}
+
+#mytblpdf th {    
+    border: 1px solid #dddddd;    
+    text-align: left;    
+    padding: 8px;    
+    background: #03787c;
+    color: white; 
+}    
+#mytblpdf td {  
+    border: 1px solid #dddddd;    
+    text-align: left;    
+    padding: 8px;     
+}   
+
