@@ -55,6 +55,7 @@ export interface IDocument {
     DocReminder:string;
     Departmental:string;
     DocReview:string;
+    DepartmentalOwner:string;
     When:string;
     Sendto:string;
     COMPILED:string;

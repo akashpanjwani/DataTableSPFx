@@ -59,6 +59,8 @@ let GroupArr = [];
 let JobArr = [];
 let table;
 let Dep = [];
+let jobRole = [];
+let isAdmin = false;
 let depChecked = true;
 export default class DocumentTable extends React.Component<IDocumentTableProps, IDocumentTableState> {
 
@@ -105,13 +107,22 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
 
   public async componentDidMount(): Promise<void> {
     selectDocs = [];
+
     this.getDropdownItems();
-    await this.getjobRoles(this.props.site,this.props.currentUser);
+    await this.getjobRoles(this.props.site, this.props.currentUser);
+    console.log(Dep);
+    console.log(jobRole);
+    if (jobRole.indexOf("Head Office CEO") > -1 || jobRole.indexOf("Head Office Business Process Specialist") > -1 || jobRole.indexOf("Head Office Document Controller") > -1) {
+      isAdmin = true;
+    }
+    else {
+      isAdmin = false;
+    }
 
     this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr);
   }
 
-  public async getjobRoles(siteUrl: string,currentUser:string) {
+  public async getjobRoles(siteUrl: string, currentUser: string) {
     let caml = "";
     let camlQuery: string = '';
     camlQuery = `<View Scope='Recursive'>
@@ -137,22 +148,41 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
     const items: any[] = await web.lists.getByTitle("JobRoles").getItemsByCAMLQuery(countQuery, 'FieldValuesAsText');
     console.log(items);
 
+    Dep = [];
+    jobRole = [];
     $.each(items, function (e, val) {
       var users = val.FieldValuesAsText.Users;
       var cu = currentUser;
       var userArr = users.indexOf(';') > -1 ? users.split(';') : users;
       if (users.indexOf(';') > -1 == true) {
         if (users.indexOf(cu) > -1) {
-          var temp = val.FieldValuesAsText.DEPARTMENT.indexOf(';') > -1 ? val.FieldValuesAsText.DEPARTMENT.split(';') : val.FieldValuesAsText.DEPARTMENT;
-          Dep.push(temp);
+          var DepArr = val.FieldValuesAsText.DEPARTMENT.trim();
+
+          var temp = DepArr.indexOf(';') > -1 ? DepArr.split(';') : DepArr;
+          var temp1 = val.FieldValuesAsText.Title;
+          if (DepArr.indexOf(';') > -1) {
+            $.each(temp, function (e, val) { Dep.push(val); })
+          }
+          else {
+            Dep.push(temp);
+          }
+          jobRole.push(temp1);
         }
 
       }
       else {
         if (userArr == cu) {
           console.log(val.FieldValuesAsText);
-          var temp = val.FieldValuesAsText.DEPARTMENT.indexOf(';') > -1 ? val.FieldValuesAsText.DEPARTMENT.split(';') : val.FieldValuesAsText.DEPARTMENT;
-          Dep.push(temp);
+          var DepArr = val.FieldValuesAsText.DEPARTMENT.trim();
+          var temp = DepArr.indexOf(';') > -1 ? DepArr.split(';') : DepArr;
+          var temp1 = val.FieldValuesAsText.Title;
+          if (DepArr.indexOf(';') > -1) {
+            $.each(temp, function (e, val) { Dep.push(val); })
+          }
+          else {
+            Dep.push(temp);
+          }
+          jobRole.push(temp1);
         }
       }
     });
@@ -170,12 +200,15 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
   private generateDocuments(siteUrl: string, listId: string, currentUser: string, props: IDocumentTableProps, GroupArr: any, JobArr: any, LangArr: any): void {
     IService.generateDocuments(siteUrl, listId, currentUser, props, GroupArr, JobArr, LangArr).then((response: any) => {
       items = response.results;
-      this._allItems = response.results;
+      this._allItems = response.results;  
+
+      if (Dep.length == 0 && this.state.depChecked == true) {
+        this._allItems = [];
+      }
+
       this.setState({
-        items: response.results,
+        items: this._allItems,
       });
-
-
 
       let self = this;
 
@@ -186,7 +219,6 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
         "info": true,
         "pagingType": 'full_numbers',
         dom: 'lBfrtip',
-
         buttons: [
 
           { extend: 'copy' },
@@ -213,7 +245,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           { extend: 'pdf' },
           { extend: 'print' }
         ],
-        data: response.results,
+        data: this._allItems,
         order: [[3, 'asc']],
         columns: [
           {
@@ -221,6 +253,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
             render: (data, type, row) => {
               return "<input type='checkbox' class='assignPermission'/>";
             },
+            "visible": isAdmin,
             orderable: false,
           },
           {
@@ -228,6 +261,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
             render: (data, type, row) => {
               return "<i class='fa fa-user openUserDialog'></i>";
             },
+            "visible": isAdmin,
             orderable: false,
           },
           {
@@ -235,6 +269,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
             render: (data, type, row) => {
               return "<a><i class='fa fa-edit openDialog'></i></a>";
             },
+            "visible": isAdmin,
             orderable: false,
           },
           {
@@ -257,8 +292,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
             render: (data, type, row) => {
               return row["name"].split('-')[0];
             },
-            "title": "Reference",
-            orderable: false
+            "title": "Reference"
           },
           {
             'data': 'ReviewNo',
@@ -275,14 +309,17 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           {
             'data': 'Extension',
             "title": "Extension",
+            "visible": isAdmin,
           },
           {
             'data': 'DateCreated',
             "title": "Created",
+            "visible": isAdmin,
           },
           {
             'data': 'dateModified',
-            "title": "Date Modifed"
+            "title": "Date Modifed",
+            "visible": isAdmin,
           },
           {
             'data': 'FolPath',
@@ -290,12 +327,11 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
               return row["FilePath"];
             },
             "title": "FolPath",
-            orderable: false
+            "visible": isAdmin,
           },
           {
             'data': 'Category',
-            "title": "Category",
-            orderable: false
+            "title": "Category"
           },
           {
             'data': 'JobRole',
@@ -306,7 +342,11 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           {
             'data': 'Department',
             "title": "Department",
-            orderable: false
+            "visible": isAdmin,
+          },
+          {
+            'data': 'DepartmentalOwner',
+            "title": "Departmental Owner"
           },
           {
             'data': 'Groups',
@@ -317,11 +357,11 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           {
             'data': 'siteProjects',
             "title": "siteProjects",
-            orderable: false
+            "visible": isAdmin,
           },
           {
             'data': 'DocDescription',
-            "title": "DocDescription"
+            "title": "Description"
           },
           {
             'data': 'Lastversiondate',
@@ -334,7 +374,8 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           },
           {
             'data': 'Nextreviewdate',
-            "title": "Nextreviewdate"
+            "title": "Nextreviewdate",
+            "visible": isAdmin,
           },
           {
             'data': 'Applicability',
@@ -344,12 +385,12 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           {
             'data': 'date',
             "title": "Date",
-            "visible": true
+            "visible": isAdmin,
           },
           {
             'data': 'employeesignature',
             "title": "Employee Signature",
-            "visible": true
+            "visible": isAdmin,
           },
           {
             'data': 'trainer',
@@ -447,7 +488,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
       alert("No document selected");
     }
   }
-  
+
   public callback() {
     selectDocs = [];
     isDialogShow = true;
@@ -496,8 +537,8 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
   }
 
   private _onRoleChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
-    const newSelectedItems = [...this.state.JobArr];
-    const test2 = [...this.state.TJobArr];
+    const newSelectedItems = [];
+    const test2 = [];
     if (item.selected) {
       // add the option if it's checked
       newSelectedItems.push(item.key as number);
@@ -514,6 +555,8 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
       }
 
     }
+
+    $.each(Dep, function (e, val) { test2.push(val); })
 
     this.setState({
       JobArr: newSelectedItems,
@@ -566,7 +609,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
 
   public async getDropdownItems() {
     await $.ajax({
-      url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('Country')/items",
+      url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('Document%20Categories')/items",
       method: "Get",
       headers: { "Accept": "application/json; odata=verbose" },
       success: (data) => {
@@ -582,13 +625,13 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
     });
 
     await $.ajax({
-      url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('JobRoles')/items",
+      url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('Department')/items",
       method: "Get",
       headers: { "Accept": "application/json; odata=verbose" },
       success: (data) => {
         optionsJob = [];
         for (let item of data.d.results) {
-          let temp = { key: item.ID, text: item.Title };
+          let temp = { key: item.ID, text: item.Code };
           optionsJob.push(temp);
         }
       },
@@ -731,7 +774,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
 
     return (
       <div>
-        <table className="ms-Table">
+        <table className="ms-Table" style={{ display: "none" }}>
           <thead>
             <tr>
               <th><PrimaryButton text="Assign Document" onClick={this.assignDocument} style={{ marginRight: '1%' }} /></th>
@@ -739,12 +782,14 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
             </tr>
           </thead>
         </table>
-        <DefaultButton secondaryText="Opens the Sample Dialog" onClick={this._showprintDialog} text="Create PDF" />
+        <div className={isAdmin == true ? styles.showbtn : styles.hidebtn}>
+          <DefaultButton secondaryText="Opens the Sample Dialog" onClick={this._showprintDialog} text="Create PDF" />
+        </div>
 
         <table className="ms-Table">
           <thead>
             <tr>
-              <th> Select Country: <Dropdown
+              <th className={isAdmin == true ? styles.showbtn : styles.showbtn}> Filter Category (optional): <Dropdown
                 placeholder="Select options"
                 selectedKeys={GroupArr}
                 onChange={this._onGroupChange}
@@ -752,15 +797,15 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
                 options={optionsGroup}
                 styles={dropdownStyles}
               /></th>
-              {/* <th> Select Job Roles: <Dropdown
+              <th className={isAdmin == true ? styles.showbtn : styles.hidebtn}> Select Department: <Dropdown
                 placeholder="Select options"
                 selectedKeys={JobArr}
                 onChange={this._onRoleChange}
                 multiSelect
                 options={optionsJob}
                 styles={dropdownStyles}
-              /></th> */}
-              <th> Select Language: <Dropdown
+              /></th>
+              <th className={isAdmin == true ? styles.showbtn : styles.hidebtn}> Select Language: <Dropdown
                 placeholder="Select options"
                 selectedKeys={LangArr}
                 onChange={this._onLanguageChange}
@@ -768,8 +813,11 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
                 options={Langoptions}
                 styles={dropdownStyles}
               /></th>
-              <th>
-                <Toggle label="Current User Depatment" defaultChecked onChange={this._onChange} />
+              <th className={isAdmin == true ? styles.showbtn : styles.hidebtn}>
+                <Toggle label="Current User Depatment" disabled={false} style={{ minWidth: "2em" }} defaultChecked onChange={this._onChange} />
+              </th>
+              <th className={isAdmin == true ? styles.hidebtn : styles.showbtn}>
+                <Toggle label="Current User Depatment" disabled={true} style={{ minWidth: "2em" }} defaultChecked onChange={this._onChange} />
               </th>
             </tr>
           </thead>

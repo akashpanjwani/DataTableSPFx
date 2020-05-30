@@ -3,7 +3,7 @@
   "solution": {
     "name": "document-table-client-side-solution",
     "id": "5b437fab-d071-4e04-b73e-505cc33f4291",
-    "version": "1.0.0.2",
+    "version": "1.0.0.4",
     "includeClientSideAssets": true,
     "isDomainIsolated": false
   },

@@ -42,7 +42,7 @@ export class IService {
                 caml = "<Where>";
 
                 caml += GroupsFilter.length > 0 && DepFilter.length > 0 ? "<And>" : "";
-                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Groups\" /><Values>" + GroupVal + "</Values></In>" : "";
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
 
                 caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
                 caml += GroupsFilter.length > 0 && DepFilter.length > 0 ? "</And>" : "";
@@ -64,7 +64,7 @@ export class IService {
                 caml = "<Where>";
 
                 caml += GroupsFilter.length > 0 && LangArr.length > 0 ? "<And>" : "";
-                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Groups\" /><Values>" + GroupVal + "</Values></In>" : "";
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
 
                 caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
                 caml += GroupsFilter.length > 0 && LangArr.length > 0 ? "</And>" : "";
@@ -74,7 +74,7 @@ export class IService {
             else if(DepFilter.length==0 && LangArr.length == 0 && GroupsFilter.length > 0)
             {
                 caml = "<Where>";
-                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Groups\" /><Values>" + GroupVal + "</Values></In>" : "";
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
                 caml += "</Where>";
             }
             else if(DepFilter.length==0 && LangArr.length > 0 && GroupsFilter.length == 0)
@@ -129,15 +129,15 @@ export class IService {
                         <FieldRef Name="Applicability"/>	
                         <FieldRef Name="Groups"/>
                         <FieldRef Name="SiteProjects"/>
-
+                        <FieldRef Name="Departmental_x0020_Owner"/>
+                        <FieldRef Name="Trainer"/>
                         <FieldRef Name="SAVE ON SERVER"/>
                         <FieldRef Name="COMPILED BY"/>
                         <FieldRef Name="Send to"/>
                         <FieldRef Name="When"/>
-                        <FieldRef Name="Doc Review Date"/>
-                        <FieldRef Name="Departmental Owner"/>
+                        <FieldRef Name="Doc Review Date"/>                        
                         <FieldRef Name="Doc Reminder Date for Review"/>
-                        <FieldRef Name="Trainer"/>
+                      
 
                     </ViewFields>`;
 
@@ -192,20 +192,21 @@ export class IService {
                 DateCreated: item.FieldValuesAsText.Created,
                 Lastversiondate: item.FieldValuesAsText.Lastversiondate,
                 Department: item.DepartmentId.length > 0 ? item.FieldValuesAsText.Department : "",
-                Category: item.Category != null ? item.Category : "",
+                Category: item.CategoryId.length > 0 ? item.FieldValuesAsText.Category : "",
                 InstructionsOrNotes: item.InstructionsOrNotes != null ? item.InstructionsOrNotes : "",
                 Nextreviewdate: item.FieldValuesAsText.Nextreviewdate,
-                JobRole: item.JobRoleId.length > 0 ? item.FieldValuesAsText.JobRole : "",
+                JobRole: item.FieldValuesAsText.JobRole,
                 Groups: item.GroupsId.length > 0 ? item.FieldValuesAsText.Groups : "",
                 siteProjects: item.SiteProjectsId.length > 0 ? item.FieldValuesAsText.SiteProjects : "",
                 Applicability: item.FieldValuesAsText.Applicability,
                 date: "",
                 employeesignature: "",
-                trainer: "",
+                trainer: item.FieldValuesAsText.Trainer,
                 Trainer: item.FieldValuesAsText.Trainer,
                 DocReminder: "",
                 Departmental: "",
                 DocReview: "",
+                DepartmentalOwner: item.FieldValuesAsText.Departmental_x005f_x0020_x005f_Owner,
                 When: item.FieldValuesAsText.When,
                 Sendto: "",
                 COMPILED: "",
