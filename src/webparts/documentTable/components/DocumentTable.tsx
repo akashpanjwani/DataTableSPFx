@@ -556,7 +556,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
 
     }
 
-    $.each(Dep, function (e, val) { test2.push(val); })
+    $.each(Dep, function (e, val) { test2.push(val.trim()); })
 
     this.setState({
       JobArr: newSelectedItems,
@@ -712,7 +712,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
       table.row().remove();
       table.clear().draw();
       table.destroy();
-      this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, [], this.state.TLangArr);
+      this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr);
       depChecked = false;
     }
 
