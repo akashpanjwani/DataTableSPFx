@@ -6,7 +6,6 @@ import pnp, { List, App, Web, CamlQuery } from "sp-pnp-js";
 import { IDocumentTableProps } from '../webparts/documentTable/components/IDocumentTableProps';
 import { IDocument } from '../webparts/documentTable/components/IDocumentTableState';
 import * as $ from 'jquery';
-
 export class IService {
 
     private spHttpClient: SPHttpClient;
@@ -17,10 +16,9 @@ export class IService {
         });
     }
 
-    public static async generateDocuments(webUrl: string, listName: string, currentUser: string, props: IDocumentTableProps, GroupsFilter: any, DepFilter: any, LangArr: any): Promise<any> {
+    public static async generateDocuments(webUrl: string, listName: string, currentUser: string, props: IDocumentTableProps, GroupsFilter: any, DepFilter: any, LangArr: any, siteproject: any): Promise<any> {
         let p = new Promise<any>(async (resolve) => {
-
-            var caml="";
+            
             var GroupVal = "";
             $.each(GroupsFilter, (e, val) => {
                 GroupVal += "<Value Type=\"LookupMulti\">" + val.toString() + "</Value>";
@@ -37,59 +35,191 @@ export class IService {
                 LangVal += "<Value Type=\"LookupMulti\">" + val.toString() + "</Value>";
             });
 
-            if (LangArr.length == 0 && GroupsFilter.length > 0 && DepFilter.length > 0) {
+            var SiteProjectVal = "";
+            $.each(siteproject, (e, val) => {
+                SiteProjectVal += "<Value Type=\"LookupMulti\">" + val.toString() + "</Value>";
+            });
+
+            let caml: any = "";
+            if (DepFilter.length == 0 && LangArr.length == 0 && GroupsFilter.length == 0 && siteproject.length > 0) {
+                caml = "<Where>";
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+                caml += "</Where>";
+            }
+
+            else if (DepFilter.length == 0 && LangArr.length == 0 && GroupsFilter.length > 0 && siteproject.length == 0) {
+                caml = "<Where>";
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
+                caml += "</Where>";
+            }
+
+            else if (DepFilter.length == 0 && LangArr.length > 0 && GroupsFilter.length == 0 && siteproject.length == 0) {
+                caml = "<Where>";
+                caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
+                caml += "</Where>";
+            }
+            else if (DepFilter.length > 0 && LangArr.length == 0 && GroupsFilter.length == 0 && siteproject.length == 0) {
+                caml = "<Where>";
+                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
+                caml += "</Where>";
+            }
+
+            else if (DepFilter.length > 0 && LangArr.length == 0 && GroupsFilter.length == 0 && siteproject.length > 0) {
+                caml = "<Where>";
+
+                caml += DepFilter.length > 0 && siteproject.length > 0 ? "<And>" : "";
+                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
+
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+                caml += siteproject.length > 0 && DepFilter.length > 0 ? "</And>" : "";
+
+                caml += "</Where>";
+
+            }
+            else if (DepFilter.length > 0 && LangArr.length > 0 && GroupsFilter.length == 0 && siteproject.length == 0) {
 
                 caml = "<Where>";
 
-                caml += GroupsFilter.length > 0 && DepFilter.length > 0 ? "<And>" : "";
-                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
-
+                caml += DepFilter.length > 0 && LangArr.length > 0 ? "<And>" : "";
                 caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
+
+                caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
+                caml += LangArr.length > 0 && LangArr.length > 0 ? "</And>" : "";
+
+                caml += "</Where>";
+            }
+            else if (DepFilter.length > 0 && LangArr.length == 0 && GroupsFilter.length > 0 && siteproject.length == 0) {
+
+                caml = "<Where>";
+
+                caml += DepFilter.length > 0 && GroupsFilter.length > 0 ? "<And>" : "";
+                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
+
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
                 caml += GroupsFilter.length > 0 && DepFilter.length > 0 ? "</And>" : "";
 
                 caml += "</Where>";
+
             }
-            else if(GroupsFilter.length==0 && LangArr.length > 0 && DepFilter.length > 0){
+            else if (DepFilter.length == 0 && LangArr.length > 0 && GroupsFilter.length > 0 && siteproject.length == 0) {
                 caml = "<Where>";
 
-                caml += LangArr.length > 0 && DepFilter.length > 0 ? "<And>" : "";
+                caml += LangArr.length > 0 && GroupsFilter.length > 0 ? "<And>" : "";
                 caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
 
-                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
-                caml += LangArr.length > 0 && DepFilter.length > 0 ? "</And>" : "";
-
-                caml += "</Where>";
-            }
-            else if(DepFilter.length==0 && LangArr.length > 0 && GroupsFilter.length > 0){
-                caml = "<Where>";
-
-                caml += GroupsFilter.length > 0 && LangArr.length > 0 ? "<And>" : "";
                 caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
-
-                caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
                 caml += GroupsFilter.length > 0 && LangArr.length > 0 ? "</And>" : "";
 
                 caml += "</Where>";
             }
-            else if(DepFilter.length==0 && LangArr.length == 0 && GroupsFilter.length > 0)
-            {
+            else if (DepFilter.length == 0 && LangArr.length > 0 && GroupsFilter.length == 0 && siteproject.length > 0) {
                 caml = "<Where>";
-                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
-                caml += "</Where>";
-            }
-            else if(DepFilter.length==0 && LangArr.length > 0 && GroupsFilter.length == 0)
-            {
-                caml = "<Where>";
+
+                caml += LangArr.length > 0 && siteproject.length > 0 ? "<And>" : "";
                 caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
+
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+                caml += siteproject.length > 0 && LangArr.length > 0 ? "</And>" : "";
+
                 caml += "</Where>";
             }
-            else if(DepFilter.length>0 && LangArr.length == 0 && GroupsFilter.length==0)
-            {
+            else if (DepFilter.length == 0 && LangArr.length == 0 && GroupsFilter.length > 0 && siteproject.length > 0) {
                 caml = "<Where>";
-                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
+
+                caml += GroupsFilter.length > 0 && siteproject.length > 0 ? "<And>" : "";
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
+
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+                caml += siteproject.length > 0 && LangArr.length > 0 ? "</And>" : "";
+
                 caml += "</Where>";
             }
-            caml.toString();
+            else if (DepFilter.length > 0 && LangArr.length > 0 && GroupsFilter.length > 0 && siteproject.length == 0) {
+
+                caml = "<Where>";
+
+                caml += GroupsFilter.length > 0 && LangArr.length > 0 && DepFilter.length > 0 ? "<And><And>" : "";
+
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
+
+                caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In></And>" : "";
+
+                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In>" : "";
+
+                caml += GroupsFilter.length > 0 && LangArr.length > 0 && DepFilter.length > 0 ? "</And>" : "";
+
+                caml += "</Where>";
+
+            }
+            else if (DepFilter.length == 0 && LangArr.length > 0 && GroupsFilter.length > 0 && siteproject.length > 0) {
+
+                caml = "<Where>";
+
+                caml += GroupsFilter.length > 0 && LangArr.length > 0 && siteproject.length > 0 ? "<And><And>" : "";
+
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
+
+                caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In></And>" : "";
+
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+
+                caml += GroupsFilter.length > 0 && LangArr.length > 0 && siteproject.length > 0 ? "</And>" : "";
+
+                caml += "</Where>";
+
+            }
+            else if (DepFilter.length > 0 && LangArr.length == 0 && GroupsFilter.length > 0 && siteproject.length > 0) {
+
+
+                caml = "<Where>";
+
+                caml += GroupsFilter.length > 0 && DepFilter.length > 0 && siteproject.length > 0 ? "<And><And>" : "";
+
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In>" : "";
+
+                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In></And>" : "";
+
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+
+                caml += GroupsFilter.length > 0 && DepFilter.length > 0 && siteproject.length > 0 ? "</And>" : "";
+
+                caml += "</Where>";
+            }
+            else if (DepFilter.length > 0 && LangArr.length > 0 && GroupsFilter.length == 0 && siteproject.length > 0) {
+
+                caml = "<Where>";
+
+                caml += LangArr.length > 0 && DepFilter.length > 0 && siteproject.length > 0 ? "<And><And>" : "";
+
+                caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
+
+                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In></And>" : "";
+
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+
+                caml += LangArr.length > 0 && DepFilter.length > 0 && siteproject.length > 0 ? "</And>" : "";
+
+                caml += "</Where>";
+
+            }
+            else if (DepFilter.length > 0 && LangArr.length > 0 && GroupsFilter.length > 0 && siteproject.length > 0) {
+
+                caml = "<Where>";
+
+                caml += LangArr.length > 0 && DepFilter.length > 0 && siteproject.length > 0 && GroupsFilter.length > 0 ? "<And><And>" : "";
+
+                caml += LangArr.length > 0 ? "<In><FieldRef Name=\"Language\" /><Values>" + LangVal + "</Values></In>" : "";
+
+                caml += DepFilter.length > 0 ? "<In><FieldRef Name=\"Department\" /><Values>" + DepVal + "</Values></In></And><And>" : "";
+
+                caml += siteproject.length > 0 ? "<In><FieldRef Name=\"SiteProjects\" /><Values>" + SiteProjectVal + "</Values></In>" : "";
+
+                caml += GroupsFilter.length > 0 ? "<In><FieldRef Name=\"Category\" /><Values>" + GroupVal + "</Values></In></And>" : "";
+
+                caml += LangArr.length > 0 && DepFilter.length > 0 && siteproject.length > 0 && GroupsFilter.length > 0 ? "</And>" : "";
+                
+                caml += "</Where>";
+            }
 
             let camlQuery: string = '';
             camlQuery = `<View Scope='Recursive'>

@@ -22,6 +22,7 @@ import { AssignDialog } from './../../../components/assignDialog/AssignUser';
 import { AssignProperty } from './../../../components/AssignPropertyDialog/AssignProperty';
 import { Image } from 'office-ui-fabric-react/lib/Image';
 import pnp, { List, App, Web, CamlQuery } from "sp-pnp-js";
+import ReactHtmlParser, { processNodes, convertNodeToElement, htmlparser2 } from 'react-html-parser';
 //import { ISpfxPdfProps } from './ISpfxPdfProps';
 import * as jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -45,11 +46,21 @@ let enteredText = "";
 let isEditDialogShow = true;
 let isDialogShow = true;
 let itemURl = "";
-
+let country = "";
 let optionsGroup: IDropdownOption[] = [];
+let Grpoptions: IDropdownOption[] = [];
+
 let optionsJob: IDropdownOption[] = [];
+let TempoptionsJob: IDropdownOption[] = [];
+let siteproject;
+let siteprojectJob: IDropdownOption[] = [];
+let TempsiteprojectJob: IDropdownOption[] = [];
 
 let Langoptions: IDropdownOption[] = [];
+
+let jobRoleOption: any = {};
+let jobRoleOptionArr: IDropdownOption[] = [];
+let tempJobRole: IDropdownOption[] = [];
 
 let dropdownStyles: Partial<IDropdownStyles> = {
   dropdown: { width: 300, marginBottom: "10px" }
@@ -61,7 +72,10 @@ let table;
 let Dep = [];
 let jobRole = [];
 let isAdmin = false;
-let depChecked = true;
+let depChecked = false;
+let rebindDrop = false;
+let categoryCheck: any = [];
+
 export default class DocumentTable extends React.Component<IDocumentTableProps, IDocumentTableState> {
 
   private _selection: Selection;
@@ -93,14 +107,19 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
       GroupItem: [],
       JobRoleItem: [],
       GroupArr: [],
+      siteProjectArr: [],
+      TsiteProjectArr: [],
       JobArr: [],
       LangArr: [],
       TLangArr: [],
       TGroupArr: [],
       TJobArr: [],
+      TJobArrNew: [],
       hidePrintDialog: true,
       Text: "",
-      depChecked: true
+      depChecked: false,
+      jobR: [],
+      TjobR: []
     };
 
   }
@@ -119,7 +138,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
       isAdmin = false;
     }
 
-    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr);
+    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr, this.state.TsiteProjectArr);
   }
 
   public async getjobRoles(siteUrl: string, currentUser: string) {
@@ -161,7 +180,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           var temp = DepArr.indexOf(';') > -1 ? DepArr.split(';') : DepArr;
           var temp1 = val.FieldValuesAsText.Title;
           if (DepArr.indexOf(';') > -1) {
-            $.each(temp, function (e, val) { Dep.push(val); })
+            $.each(temp, function (e, val) { Dep.push(val.trim()); });
           }
           else {
             Dep.push(temp);
@@ -177,7 +196,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           var temp = DepArr.indexOf(';') > -1 ? DepArr.split(';') : DepArr;
           var temp1 = val.FieldValuesAsText.Title;
           if (DepArr.indexOf(';') > -1) {
-            $.each(temp, function (e, val) { Dep.push(val); })
+            $.each(temp, function (e, val) { Dep.push(val.trim()); });
           }
           else {
             Dep.push(temp);
@@ -186,29 +205,55 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
         }
       }
     });
-    if (depChecked == true) {
+
+    if (jobRole.indexOf("Head Office CEO") > -1 || jobRole.indexOf("Head Office Business Process Specialist") > -1 || jobRole.indexOf("Head Office Document Controller") > -1) {
+      isAdmin = true;
+    }
+    else {
+      isAdmin = false;
+    }
+    if (isAdmin == false) {
       this.setState({
         TJobArr: Dep
       });
     }
     else {
-
+      this.setState({
+        TJobArr: []
+      });
     }
-
   }
 
-  private generateDocuments(siteUrl: string, listId: string, currentUser: string, props: IDocumentTableProps, GroupArr: any, JobArr: any, LangArr: any): void {
-    IService.generateDocuments(siteUrl, listId, currentUser, props, GroupArr, JobArr, LangArr).then((response: any) => {
+  private generateDocuments(siteUrl: string, listId: string, currentUser: string, props: IDocumentTableProps, GroupArr: any, JobArr: any, LangArr: any, siteproject: any): void {
+    IService.generateDocuments(siteUrl, listId, currentUser, props, GroupArr, JobArr, LangArr, siteproject).then((response: any) => {
       items = response.results;
-      this._allItems = response.results;  
+      this._allItems = response.results;
 
-      if (Dep.length == 0 && this.state.depChecked == true) {
+      if (Dep.length == 0) {
         this._allItems = [];
+      }
+
+      if (rebindDrop == true) {
+        let filteredCategory = this._allItems.map((items: any) => items["Category"]);
+        filteredCategory = filteredCategory.filter((x, i, a) => a.indexOf(x) == i && x != "")
+        let tempArr = [];
+        $.each(optionsGroup, function (e, val) {
+          if (filteredCategory.indexOf(val["text"]) > -1) {
+            tempArr.push(val);
+          }
+        })
+        optionsGroup = tempArr;
+        rebindDrop = false;
+      }
+      else {
+        optionsGroup = categoryCheck;
       }
 
       this.setState({
         items: this._allItems,
       });
+
+
 
       let self = this;
 
@@ -499,14 +544,14 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
     table.row().remove();
     table.clear().draw();
     table.destroy();
-    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr);
+    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr, this.state.TsiteProjectArr);
     //this.componentDidMount();
   }
 
   private _onGroupChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
 
-    const newSelectedItems = [...this.state.GroupArr];
-    const test = [...this.state.TGroupArr];
+    let newSelectedItems = [...this.state.GroupArr];
+    let test = [...this.state.TGroupArr];
     if (item.selected) {
       // add the option if it's checked
       newSelectedItems.push(item.key as number);
@@ -533,12 +578,50 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
     table.row().remove();
     table.clear().draw();
     table.destroy();
-    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, test, this.state.TJobArr, this.state.TLangArr);
+    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, test, this.state.TJobArr, this.state.TLangArr, this.state.TsiteProjectArr);
+  }
+
+  private _onsiteProjectChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
+
+    let newSelectedItems = [...this.state.siteProjectArr];
+    let test = [...this.state.TsiteProjectArr];
+    if (item.selected) {
+      // add the option if it's checked
+      newSelectedItems.push(item.key as number);
+      test.push(item.text as string);
+    } else {
+      // remove the option if it's unchecked
+      const currIndex = newSelectedItems.indexOf(item.key as number);
+      const currIndex1 = test.indexOf(item.text as string);
+      if (currIndex > -1) {
+        newSelectedItems.splice(currIndex, 1);
+      }
+      if (currIndex1 > -1) {
+        test.splice(currIndex, 1);
+      }
+    }
+    this.setState({
+      siteProjectArr: newSelectedItems,
+      TsiteProjectArr: test,
+      hideModal: true,
+      hideDialog: true,
+      hidePropertyDialog: true
+    });
+    if (test.length > 0) {
+      rebindDrop = true;
+    } else {
+      rebindDrop = false;
+    }
+
+    table.row().remove();
+    table.clear().draw();
+    table.destroy();
+    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr, test);
   }
 
   private _onRoleChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
-    const newSelectedItems = [];
-    const test2 = [];
+    let newSelectedItems = [...this.state.JobArr];
+    let test2 = [...this.state.TJobArr];
     if (item.selected) {
       // add the option if it's checked
       newSelectedItems.push(item.key as number);
@@ -551,13 +634,13 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
         newSelectedItems.splice(currIndex, 1);
       }
       if (currIndex1 > -1) {
-        test2.splice(currIndex, 1);
+        test2.splice(currIndex1, 1);
       }
 
     }
-
-    $.each(Dep, function (e, val) { test2.push(val.trim()); })
-
+    if (depChecked == true) {
+      $.each(Dep, function (e, val) { test2.push(val.trim()); });
+    }
     this.setState({
       JobArr: newSelectedItems,
       TJobArr: test2,
@@ -566,18 +649,114 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
       hidePropertyDialog: true
     });
     console.log(JobArr);
-
+    if (test2.length > 0) {
+      rebindDrop = true;
+    } else {
+      rebindDrop = false;
+    }
 
     table.row().remove();
     table.clear().draw();
     table.destroy();
-    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, test2, this.state.TLangArr);
+    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, test2, this.state.TLangArr, this.state.TsiteProjectArr);
+
+  }
+
+  private _onJobRoleChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
+    //let newSelectedItems = [...this.state.jobR];
+    // let test2 = [...this.state.TjobR];
+
+    let newSelectedItems = [];
+    let test2 = [];
+
+    let temp1 = [];
+    let temp2 = [];
+
+    if (item.selected) {
+      optionsJob = TempoptionsJob;
+      siteprojectJob = TempsiteprojectJob;
+      // add the option if it's checked
+      newSelectedItems.push(item.key as number);
+      test2.push(item.text as string);
+
+      let selectedjobRole = jobRoleOption[item.text];
+
+      let depArr = jobRoleOption[item.text].Dep.results;
+
+      let siteArr = jobRoleOption[item.text].SiteProject.results;
+
+      let tempJobRole = [];
+
+      $.each(optionsJob, function (e, val) {
+        if (depArr.indexOf(val.key) != -1) {
+          tempJobRole.push(val);
+        }
+      })
+      let tempSite = [];
+      $.each(siteprojectJob, function (e, val) {
+        if (siteArr.indexOf(val.key) != -1) {
+          tempSite.push(val);
+        }
+      })
+
+      $.each(tempSite, function (e, val) { temp1.push(val.text.trim()); });
+
+      $.each(tempJobRole, function (e, val) { temp2.push(val.text.trim()); });
+
+      this.setState({
+        TsiteProjectArr: temp1,
+        TJobArr: temp2,
+        JobArr: depArr,
+        siteProjectArr: siteArr
+      })
+
+
+      optionsJob = tempJobRole;
+      siteprojectJob = tempSite;
+    }
+    else {
+
+      // remove the option if it's unchecked
+      const currIndex = newSelectedItems.indexOf(item.key as number);
+      const currIndex1 = test2.indexOf(item.text as string);
+      if (currIndex > -1) {
+        newSelectedItems.splice(currIndex, 1);
+      }
+      if (currIndex1 > -1) {
+        test2.splice(currIndex1, 1);
+      }
+
+
+      this.setState({
+        TsiteProjectArr: [],
+        TJobArr: [],
+        JobArr: [],
+        siteProjectArr: [],
+        jobR: newSelectedItems,
+        TjobR: test2
+      })
+
+      temp1 = [];
+      temp2 = [];
+
+      optionsJob = TempoptionsJob;
+      siteprojectJob = TempsiteprojectJob;
+
+    }
+    this.setState({
+      jobR: newSelectedItems,
+      TjobR: test2
+    })
+    table.row().remove();
+    table.clear().draw();
+    table.destroy();
+    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, temp2, this.state.TLangArr, temp1);
 
   }
 
   private _onLanguageChange = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption): void => {
-    const newSelectedItems = [...this.state.LangArr];
-    const test2 = [...this.state.TLangArr];
+    let newSelectedItems = [...this.state.LangArr];
+    let test2 = [...this.state.TLangArr];
     if (item.selected) {
       // add the option if it's checked
       newSelectedItems.push(item.key as any);
@@ -603,8 +782,25 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
     table.row().remove();
     table.clear().draw();
     table.destroy();
-    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, test2);
+    this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, test2, this.state.TsiteProjectArr);
 
+  }
+
+  public dynamicSort(property) {
+    var sortOrder = 1;
+
+    if (property[0] === "-") {
+      sortOrder = -1;
+      property = property.substr(1);
+    }
+
+    return function (a, b) {
+      if (sortOrder == -1) {
+        return b[property].localeCompare(a[property]);
+      } else {
+        return a[property].localeCompare(b[property]);
+      }
+    }
   }
 
   public async getDropdownItems() {
@@ -614,10 +810,13 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
       headers: { "Accept": "application/json; odata=verbose" },
       success: (data) => {
         optionsGroup = [];
+        categoryCheck = [];
         for (let item of data.d.results) {
           let temp = { key: item.ID, text: item.Title };
           optionsGroup.push(temp);
+          categoryCheck.push(temp);
         }
+        categoryCheck.sort(this.dynamicSort("text"));
       },
       error: (data, errorCode, errorMessage) => {
         alert(errorMessage);
@@ -633,12 +832,56 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
         for (let item of data.d.results) {
           let temp = { key: item.ID, text: item.Code };
           optionsJob.push(temp);
+          TempoptionsJob.push(temp);
         }
+        optionsJob.sort(this.dynamicSort("text"));
+        TempoptionsJob.sort(this.dynamicSort("text"));
       },
       error: (data, errorCode, errorMessage) => {
         alert(errorMessage);
       }
     });
+
+    await $.ajax({
+      url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('JobRoles')/items",
+      method: "Get",
+      headers: { "Accept": "application/json; odata=verbose" },
+      success: (data) => {
+        jobRoleOption = {};
+        jobRoleOptionArr = [];
+        for (let item of data.d.results) {
+          let temp = { key: item.ID, text: item.Title };
+          jobRoleOptionArr.push(temp);
+          //jobRoleOptionArr.push(item.Title);
+          jobRoleOption[item.Title] = { "Dep": item.DEPARTMENTId, "SiteProject": item.Site_x0020_LocationId }
+        }
+        jobRoleOptionArr.sort(this.dynamicSort("text"));
+      },
+      error: (data, errorCode, errorMessage) => {
+        alert(errorMessage);
+      }
+    });
+
+    await $.ajax({
+      url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('SiteProjects')/items",
+      method: "Get",
+      headers: { "Accept": "application/json; odata=verbose" },
+      success: (data) => {
+        siteproject = data.d.results;
+        siteprojectJob = [];
+        for (let item of data.d.results) {
+          let temp = { key: item.ID, text: item.Title };
+          siteprojectJob.push(temp);
+          TempsiteprojectJob.push(temp);
+        }
+        siteprojectJob.sort(this.dynamicSort("text"));
+        TempsiteprojectJob.sort(this.dynamicSort("text"));
+      },
+      error: (data, errorCode, errorMessage) => {
+        alert(errorMessage);
+      }
+    });
+
 
     await $.ajax({
       url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('language')/items",
@@ -650,6 +893,24 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
           let temp = { key: item.ID, text: item.Title };
           Langoptions.push(temp);
         }
+        Langoptions.sort(this.dynamicSort("text"));
+      },
+      error: (data, errorCode, errorMessage) => {
+        alert(errorMessage);
+      }
+    });
+
+    await $.ajax({
+      url: "https://sjch.sharepoint.com/sites/SharedCentre/_api/web/lists/getbytitle('Country')/items",
+      method: "Get",
+      headers: { "Accept": "application/json; odata=verbose" },
+      success: (data) => {
+        Grpoptions = [];
+        for (let item of data.d.results) {
+          let temp = { key: item.ID, text: item.Title };
+          Grpoptions.push(temp);
+        }
+        Grpoptions.sort(this.dynamicSort("text"));
       },
       error: (data, errorCode, errorMessage) => {
         alert(errorMessage);
@@ -664,7 +925,7 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
     var printWindow = window.open('', '', 'height=500,width=500');
     printWindow.document.write('<html><head><title>Print Page</title>');
     printWindow.document.write('<style type="text/css">');
-    printWindow.document.write('@media print{#mytblpdf table{table-layout:fixed;width:500px}#mytblpdf td{border:1px solid #ddd;overflow:hidden;width:90px;word-break:break-word}#mytblpdf th{border:1px solid #ddd;overflow:hidden;width:90px;word-break:break-word}#mytblpdf th{border:1px solid #ddd;text-align:left;padding:8px;background:#03787c;color:#fff}#mytblpdf tr:nth-child(even){background-color:#ddd}#mytblpdf th{border:1px solid #ddd;text-align:left;padding:8px;background:#03787c;color:#fff}#mytblpdf td{border:1px solid #ddd;text-align:left;padding:8px}}');
+    printWindow.document.write('@media print{.header {display: inline-block;width: 100%;}.playerOne {float: right;}.playerTwo {float: left;}#mytblpdf table{table-layout:fixed;width:500px}#mytblpdf td{border:1px solid #ddd;overflow:hidden;width:90px;word-break:break-word}#mytblpdf th{border:1px solid #ddd;overflow:hidden;width:90px;word-break:break-word}#mytblpdf th{border:1px solid #ddd;text-align:left;padding:8px;background:#03787c;color:#fff}#mytblpdf tr:nth-child(even){background-color:#ddd}#mytblpdf th{border:1px solid #ddd;text-align:left;padding:8px;background:#03787c;color:#fff}#mytblpdf td{border:1px solid #ddd;text-align:left;padding:8px}}');
     printWindow.document.write('#mytblpdf table{table-layout:fixed;width:500px}#mytblpdf td{border:1px solid #ddd;overflow:hidden;width:110px;word-break:break-word}#mytblpdf th{border:1px solid #ddd;overflow:hidden;width:110px;word-break:break-word}#mytblpdf th{border:1px solid #ddd;text-align:left;padding:8px;background:#03787c;color:#fff}#mytblpdf tr:nth-child(even){background-color:#ddd}#mytblpdf th{border:1px solid #ddd;text-align:left;padding:8px;background:#03787c;color:#fff}#mytblpdf td{border:1px solid #ddd;text-align:left;padding:8px}');
     printWindow.document.write('</style>');
     printWindow.document.write('<link rel="stylesheet" media="print" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">');
@@ -676,6 +937,16 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
   }
 
   private _showprintDialog = (): void => {
+
+    console.log(this.state.TsiteProjectArr);
+    var Temp = $.grep(siteproject, function (e, val) { return e.Title == "ALGERIA - HMD CLINIC" })
+
+    if (Temp.length > 0) {
+      var Temp1 = $.grep(Grpoptions, function (e, val) { return e.key == Temp[0].ID })
+      if (Temp1.length > 0) {
+        country = Temp1[0].text;
+      }
+    }
     this.setState({ hidePrintDialog: false });
   }
 
@@ -694,26 +965,36 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
   public _onChange(ev: React.MouseEvent<HTMLElement>, checked: boolean) {
     console.log('toggle is ' + (checked ? 'checked' : 'not checked'));
     if (checked) {
+      depChecked = true;
       this.setState({
         depChecked: true,
-        TJobArr: Dep
+        TJobArr: Dep,
+        JobArr: [],
+        LangArr: [],
+        GroupArr: [],
+        siteProjectArr: []
       });
       table.row().remove();
       table.clear().draw();
       table.destroy();
-      this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, Dep, this.state.TLangArr);
-      depChecked = true;
+      this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, [], Dep, [], []);
+
     }
     else {
+
+      depChecked = false;
       this.setState({
         depChecked: false,
-        TJobArr: []
+        TJobArr: [],
+        JobArr: [],
+        LangArr: [],
+        GroupArr: [],
+        siteProjectArr: []
       });
       table.row().remove();
       table.clear().draw();
       table.destroy();
-      this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, this.state.TGroupArr, this.state.TJobArr, this.state.TLangArr);
-      depChecked = false;
+      this.generateDocuments(this.props.site, "Documents", this.props.currentUser, this.props, [], [], [], []);
     }
 
   }
@@ -723,52 +1004,62 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
     const { GroupArr } = this.state;
     const { JobArr } = this.state;
     const { LangArr } = this.state;
-
+    const { siteProjectArr } = this.state;
+    const { jobR } = this.state;
     let today = new Date();
-    let date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+    let date = (today.getMonth() + 1) + '/' + today.getDate() + '/' + today.getFullYear();
 
     const imgStyles = {
       root: { width: 400, height: "100px" },
       image: { width: 400, height: "80px", marginTop: "5%" }
     };
+    let NewObj;
+    if (this.state.items) {
+      NewObj = this.state.items.reduce((r, a) => {
+        r[a.Module] = [...r[a.Module] || [], a];
+        return r;
+      }, {});
+    }
+    let temp;
+
+    let HTMlString = "";
+
+    $.each(NewObj, function (e, val) {
+      temp = val;
+      HTMlString += `<tr>
+                    <td colspan=10 style="text-align: center;font-weight: 500;">${e}</td>
+                  </tr>`;
+      $.each(temp, function (e1, val1) {
+        HTMlString += `<tr>
+                    <td>${val1.Category}</td>
+                    <td>${val1.name.split('-')[0]}</td>
+                    <td>${val1.name.split('-')[1]}</td>
+                    <td>${val1.DocDescription}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>${val1.trainer}</td>
+                  </tr>`;
+      })
+    });
+
     const DialogHTML: JSX.Element = this.state.items ?
       <div>
         <table>
           <tr>
-            <th>Document Type</th>
-            <th>Module</th>
-
+            <th>Category</th>
+            <th>Doc Reference</th>
             <th>Document Title</th>
-            <th>Document Type</th>
-            <th>Reference</th>
-
-            <th>Language Available</th>
-            <th>Department</th>
-            <th>Country</th>
-            <th>Description</th>
-            <th>Instructions/Notes</th>
+            <th>Description & Instructions</th>
+            <th>Send to</th>
+            <th>When</th>
             <th>Date</th>
             <th>Employee Signature</th>
             <th>Trainer</th>
           </tr>
-          {this.state.items.map((workItem) => {
-            return (
-              <tr>
-                <td>{workItem.Module}</td>
-                <td>{workItem.name}</td>
-                <td>{workItem.DocumentType}</td>
-                <td>{workItem.name.split('-')[0]}</td>
-                <td>{workItem.LanguageAvailable}</td>
-                <td>{workItem.Department}</td>
-                <td>{workItem.Category}</td>
-                <td>{workItem.DocDescription}</td>
-                <td>{workItem.InstructionsOrNotes}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-              </tr>
-            );
-          })}
+
+          {ReactHtmlParser(HTMlString)}
         </table></div>
       : <div />;
 
@@ -782,14 +1073,14 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
             </tr>
           </thead>
         </table>
-        <div className={isAdmin == true ? styles.showbtn : styles.hidebtn}>
+        <div className={depChecked == false && isAdmin == true ? styles.showbtn : styles.hidebtn}>
           <DefaultButton secondaryText="Opens the Sample Dialog" onClick={this._showprintDialog} text="Create PDF" />
         </div>
 
         <table className="ms-Table">
           <thead>
             <tr>
-              <th className={isAdmin == true ? styles.showbtn : styles.showbtn}> Filter Category (optional): <Dropdown
+              <th className={depChecked == false && isAdmin == true ? styles.showfilter : styles.showfilter}> Filter Category (optional): <Dropdown
                 placeholder="Select options"
                 selectedKeys={GroupArr}
                 onChange={this._onGroupChange}
@@ -797,7 +1088,15 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
                 options={optionsGroup}
                 styles={dropdownStyles}
               /></th>
-              <th className={isAdmin == true ? styles.showbtn : styles.hidebtn}> Select Department: <Dropdown
+              <th className={depChecked == false && isAdmin == true ? styles.showfilter : styles.hidebtn}> Select Job Role: <Dropdown
+                placeholder="Select options"
+                selectedKeys={jobR}
+                onChange={this._onJobRoleChange}
+                multiSelect
+                options={jobRoleOptionArr}
+                styles={dropdownStyles}
+              /></th>
+              <th className={depChecked == false && isAdmin == true ? styles.showfilter : styles.hidebtn}> Select Department: <Dropdown
                 placeholder="Select options"
                 selectedKeys={JobArr}
                 onChange={this._onRoleChange}
@@ -805,7 +1104,15 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
                 options={optionsJob}
                 styles={dropdownStyles}
               /></th>
-              <th className={isAdmin == true ? styles.showbtn : styles.hidebtn}> Select Language: <Dropdown
+              <th className={depChecked == false && isAdmin == true ? styles.showfilter : styles.hidebtn}> Select Site Projects: <Dropdown
+                placeholder="Select options"
+                selectedKeys={siteProjectArr}
+                onChange={this._onsiteProjectChange}
+                multiSelect
+                options={siteprojectJob}
+                styles={dropdownStyles}
+              /></th>
+              <th className={depChecked == false && isAdmin == true ? styles.showfilter : styles.hidebtn}> Select Language: <Dropdown
                 placeholder="Select options"
                 selectedKeys={LangArr}
                 onChange={this._onLanguageChange}
@@ -813,10 +1120,10 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
                 options={Langoptions}
                 styles={dropdownStyles}
               /></th>
-              <th className={isAdmin == true ? styles.showbtn : styles.hidebtn}>
-                <Toggle label="Current User Depatment" disabled={false} style={{ minWidth: "2em" }} defaultChecked onChange={this._onChange} />
+              <th className={isAdmin == true ? styles.showfilter : styles.hidebtn}>
+                <Toggle label="Current User Depatment" disabled={false} style={{ minWidth: "2em" }} onChange={this._onChange} />
               </th>
-              <th className={isAdmin == true ? styles.hidebtn : styles.showbtn}>
+              <th className={isAdmin == true ? styles.hidebtn : styles.showfilter}>
                 <Toggle label="Current User Depatment" disabled={true} style={{ minWidth: "2em" }} defaultChecked onChange={this._onChange} />
               </th>
             </tr>
@@ -839,38 +1146,52 @@ export default class DocumentTable extends React.Component<IDocumentTableProps, 
             <button onClick={this.documentprint} >
               Generate Pdf  </button>
 
-            <div id="block_container">
-              <div style={{ fontSize: "18px", fontWeight: 400, width: '20%' }}>Employee :<TextField onChanged={e => this._docNameTexthandleChange(e)} value={this.state.Text} /></div>
-            </div>
+
 
             <div id="mypdf">
-
-              <img src="https://sjch.sharepoint.com/sites/SharedCentre/PublishingImages/Medilink%20IHS%20Logo.png" alt="Trulli" width="300" height="100">
-
-              </img>
-              <div style={{ marginTop: "3%" }}>
-
-                <div className="row">
-                  <div className="col-sm-4" style={{ fontWeight: 500, fontSize: '20px' }}>
-                    Induction Checklist
-                  </div>
-                  <div className="col-sm-6" style={{ fontWeight: 500, fontSize: '18px' }}>
-                    Country :{this.state.TGroupArr}
-                  </div>
+              <div style={{ marginTop: "1%" }}>
+                <div id="block_container" style={{ float: "left" }}>
+                  <img src="https://sjch.sharepoint.com/sites/SharedCentre/PublishingImages/Medilink%20IHS%20Logo.png" alt="Trulli" width="250" height="70">
+                  </img>
                 </div>
+              </div>
+              <div className="header" style={{ marginTop: "1%" }}>
+                <div className="playerOne">
 
+
+                </div>
+                <div className="playerTwo" >
+                </div>
+              </div>
+
+              <div style={{ marginTop: "1%", marginLeft: "15%" }}>
+                <div id="block_container" style={{ float: "right" }}>
+                  <div style={{ fontWeight: 500, fontSize: '20px' }}>Site Projects</div>
+                  <div style={{ fontWeight: 400, fontSize: '15px' }}>{this.state.TsiteProjectArr.join(',')}</div>
+                  <div style={{ fontWeight: 500, fontSize: '20px' }}>Department</div>
+                  <div style={{ fontWeight: 400, fontSize: '15px' }}>{this.state.TJobArr.join(',')}</div>
+                  <div style={{ fontWeight: 500, fontSize: '20px' }}>Country</div>
+                  <div style={{ fontWeight: 400, fontSize: '15px' }}>{country}</div>
+                  <div><TextField label="Employee :" onChanged={e => this._docNameTexthandleChange(e)} value={this.state.Text} /></div>
+
+                </div>
+              </div>
+
+              <div style={{ marginTop: "1%" }}>
                 <div className="row">
-                  <div className="col-sm-4" style={{ fontWeight: 500, fontSize: '16px' }}>
-                    Issued :{date}
-                  </div>
-                  <div className="col-sm-6" style={{ fontWeight: 500, fontSize: '16px' }}>
-                    Job Roles :{this.state.TJobArr}
+                  <div className="col-sm-4" >
+                    <div style={{ fontWeight: 500, fontSize: '20px' }}>
+                      Induction Checklist
+                    </div>
+                    <div style={{ fontWeight: 500, fontSize: '16px' }}>
+                      Date Document Prepared :{date}
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div id="block_container">
-                <div style={{ fontSize: "18px", fontWeight: 400, width: '20%' }}>Employee : {this.state.Text}</div>
+                {/* <div style={{ fontSize: "18px", fontWeight: 400, width: '20%' }}>Employee : {this.state.Text}</div> */}
               </div>
 
               <div id="mytblpdf" style={{ marginTop: "3%" }}>
